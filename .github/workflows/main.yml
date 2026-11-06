@@ -1,0 +1,13 @@
+# Disabled until the repository owner explicitly approves a reviewed replacement.
+# Historical source: docs/archived-workflows/main.yml.disabled
+name: Disabled swing automation
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  disabled:
+    if: ${{ false }}
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Trading automation and state publication are disabled."
