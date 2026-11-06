@@ -1,0 +1,13 @@
+{
+  "momentum": {
+    "status": "active"
+  },
+  "swing": {
+    "status": "retired",
+    "sweep_to": "momentum"
+  },
+  "intraday": {
+    "status": "retired",
+    "sweep_to": "momentum"
+  }
+}

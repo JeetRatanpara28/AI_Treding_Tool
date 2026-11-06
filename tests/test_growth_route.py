@@ -73,8 +73,8 @@ def test_the_gate_reads_the_plan_file(tmp_path, monkeypatch):
     assert gate.main(['intraday']) == 0 and out.read_text().startswith('run=false\n')
 
 
-def test_the_live_plan_retires_swing_and_intraday_into_momentum():
-    with open(os.path.join(ROOT, 'state', 'sleeves.json')) as fh:
+def test_the_example_plan_retires_swing_and_intraday_into_momentum():
+    with open(os.path.join(ROOT, 'tests', 'fixtures', 'retired_sleeves.json')) as fh:
         plan = json.load(fh)
     assert plan['momentum']['status'] == 'active'
     for mode in ('swing', 'intraday'):
@@ -176,8 +176,8 @@ def test_a_split_yahoo_adjusts_late_is_caught_by_the_entry_anchor(tmp_path):
     assert rep['equity'] == pytest.approx(Lr.equity_history()['equity'].iloc[-1], rel=0.01)
 
 
-def test_the_live_corporate_action_file_credits_tieramet():
-    with open(os.path.join(ROOT, 'state', 'momentum', 'corporate_actions.json')) as fh:
+def test_the_example_corporate_action_file_credits_tieramet():
+    with open(os.path.join(ROOT, 'tests', 'fixtures', 'corporate_action_example.json')) as fh:
         (a,) = json.load(fh)
     assert (a['type'], a['symbol'], a['new_symbol'], a['ex_date']) == ('demerger', 'BHAGYANGR', 'TIERAMET',
                                                                          '2026-10-08')

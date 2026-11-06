@@ -22,6 +22,8 @@ Their existing scheduling assertions continue to run against those archives.
 Active trading workflows are manual-only, unconditionally disabled, read-only,
 and contain no trading, secret, or state-pushing steps. The manual research
 workflow runs offline tests only. New tests guard these publication requirements.
+Two regression tests that previously read private state now use minimal example
+fixtures with their original assertions intact, so clean clones need no portfolio files.
 Live broker/login access remains disabled; no broker credentials are needed.
 
 Windows setup: [WINDOWS_SETUP.md](WINDOWS_SETUP.md). The new `init` command creates
