@@ -9,9 +9,8 @@ is the first step of every run and uses only the standard library, so it
 runs before any dependency is installed: a slot with nothing to do finishes
 in seconds, and the slot that finds work runs the bot.
 
-  swing, momentum  run unless the latest settled session (today after 15:50
-                   IST on a weekday, else the previous weekday) is already in
-                   state/<mode>/state.json
+  swing, momentum  use the same reviewed offline calendar as the daily CLI;
+                   invalid or expired coverage always stops the gate
   intraday         run inside the entry window (09:15-13:30 IST on weekdays),
                    or until 15:05 while positions are open
   retired          a sleeve retired in state/sleeves.json runs only while it
@@ -27,21 +26,16 @@ import os
 import sys
 from datetime import datetime, time, timedelta, timezone
 
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from nsebot.session_calendar import CalendarError, load_calendar
+
 IST = timezone(timedelta(hours=5, minutes=30))
-SETTLE = time(15, 50)                 # Yahoo's daily bar is final (the engine uses 15:45)
 OPEN, ENTRIES_END, LAST_MANAGE = time(9, 15), time(13, 30), time(15, 5)
 
 
 def expected_session(now):
-    """The latest weekday whose close has settled. NSE holidays are not known
-    here; on one, the bot runs, finds the last session done and does nothing."""
-    d = now.date()
-    if now.weekday() < 5 and now.time() >= SETTLE:
-        return d
-    d -= timedelta(days=1)
-    while d.weekday() >= 5:
-        d -= timedelta(days=1)
-    return d
+    """Shared calendar, including holidays and genuine weekend sessions."""
+    return load_calendar().expected_session(now)
 
 
 def decide(mode, now, state, event='schedule', plan=None):
@@ -49,10 +43,14 @@ def decide(mode, now, state, event='schedule', plan=None):
     plan = plan or {}
     if plan.get('status', 'active') != 'active' and not (state.get('positions') or state.get('pending')):
         return False, f"sleeve {plan.get('status')} in state/sleeves.json and flat"
+    if mode in ('swing', 'momentum'):
+        try:
+            want = expected_session(now).isoformat()
+        except CalendarError as exc:
+            return False, f'session calendar unavailable: {exc}'
     if event == 'workflow_dispatch':
         return True, 'manual or external trigger: always runs'
     if mode in ('swing', 'momentum'):
-        want = expected_session(now).isoformat()
         last = state.get('last_processed')
         if last and last >= want:
             return False, f'session {want} already processed'

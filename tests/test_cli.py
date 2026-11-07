@@ -23,7 +23,7 @@ class FakeProvider:
         return out
 
 
-def test_swing_cli_end_to_end_with_fake_data(tmp_path, monkeypatch):
+def test_swing_cli_end_to_end_with_fake_data(tmp_path, monkeypatch, daily_cli_clock):
     monkeypatch.setattr(nsebot.data, 'YahooProvider', FakeProvider)
     monkeypatch.chdir(tmp_path)
     assert main(['swing', '--state', str(tmp_path / 'state')]) == 0
@@ -35,7 +35,7 @@ def test_swing_cli_end_to_end_with_fake_data(tmp_path, monkeypatch):
     assert len(Ledger(str(tmp_path / 'state'), 'swing', 50_000).equity_history()) == 1
 
 
-def test_swing_cli_refuses_to_trade_on_broken_data(tmp_path, monkeypatch):
+def test_swing_cli_refuses_to_trade_on_broken_data(tmp_path, monkeypatch, daily_cli_clock):
     class Empty(FakeProvider):
         def daily(self, symbols, lookback_days=400):
             return {}
@@ -45,7 +45,7 @@ def test_swing_cli_refuses_to_trade_on_broken_data(tmp_path, monkeypatch):
     assert not (tmp_path / 'state' / 'swing' / 'state.json').exists()
 
 
-def test_a_late_intraday_run_exits_quietly(tmp_path, monkeypatch):
+def test_a_late_intraday_run_exits_quietly(tmp_path, monkeypatch, daily_cli_clock):
     """GitHub's scheduler can start the intraday job after the square-off; that
     run must do nothing and send no email."""
     import nsebot.__main__ as cli

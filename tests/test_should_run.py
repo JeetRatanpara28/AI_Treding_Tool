@@ -45,6 +45,12 @@ def test_intraday_runs_only_when_a_session_can_still_trade():
 
 
 def test_main_writes_the_step_output(tmp_path, monkeypatch):
+    class Clock(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return datetime(2026, 10, 6, 18, tzinfo=gate.IST)
+
+    monkeypatch.setattr(gate, 'datetime', Clock)
     (tmp_path / 'state' / 'swing').mkdir(parents=True)
     (tmp_path / 'state' / 'swing' / 'state.json').write_text(json.dumps({'last_processed': '1999-01-01'}))
     out = tmp_path / 'out'

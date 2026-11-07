@@ -467,7 +467,7 @@ class FakeProvider:
         return out
 
 
-def test_momentum_cli_end_to_end(tmp_path, monkeypatch):
+def test_momentum_cli_end_to_end(tmp_path, monkeypatch, daily_cli_clock):
     monkeypatch.setattr(nsebot.data, 'YahooProvider', FakeProvider)
     monkeypatch.setattr(nsebot.listing, 'nse_equities', lambda *a, **k: (LISTED, 'fake list'))
     monkeypatch.chdir(tmp_path)
@@ -480,7 +480,7 @@ def test_momentum_cli_end_to_end(tmp_path, monkeypatch):
     assert main(['status', '--state', state]) == 0
 
 
-def test_momentum_cli_refuses_without_a_list_or_enough_data(tmp_path, monkeypatch):
+def test_momentum_cli_refuses_without_a_list_or_enough_data(tmp_path, monkeypatch, daily_cli_clock):
     def no_list(*a, **k):
         raise ListUnavailable('NSE unreachable and no saved list exists')
     monkeypatch.setattr(nsebot.data, 'YahooProvider', FakeProvider)

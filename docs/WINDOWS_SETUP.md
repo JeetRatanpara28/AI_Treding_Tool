@@ -57,6 +57,56 @@ After explicit approval for public data downloads:
 Paper commands still access public data; the flag records that this was explicitly
 chosen. No broker login, real order transport, or live-mode override is available.
 
+## Session calendar and data-quality safety
+
+Daily `swing` and `momentum` commands require the reviewed offline NSE cash-equity
+calendar in `nsebot/calendars/nse_cash_2026.json`. Holidays and genuine weekend
+sessions are included. Both the CLI and the inactive scheduling gate use this
+single calendar. Missing/corrupt/expired coverage stops before a download or
+portfolio access; there is no fallback to an assumed weekday.
+
+The current source review is dated 7 November 2026 and expires after **10 November
+2026 IST**. Annual date coverage is 2026, but this does not extend the review
+expiry. Review official amendments before extending the expiry; do not merely
+change the date to bypass a stop. `NSEBOT_CALENDAR` can select a separately reviewed
+local calendar; invalid configured files fail closed.
+
+Daily data readiness is **16:15 IST**, after the reviewed post-close session end
+plus a local safety buffer. This is a policy, not a promise that Yahoo has finalized
+its data. The required session's index, each fetched stock, and every held/pending
+symbol must have one complete, valid OHLCV bar. Missing values, duplicates, invalid
+prices or stale dates stop the cycle with `DATA FRESHNESS` and exit code 3.
+
+The intraday CLI refuses special sessions rather than applying regular-session
+strategy hours to them, and skips closed days without downloads. During normal
+sessions its runtime checks the latest completed interval before processing a
+poll. A lost feed does not manufacture a final close at the entry price. Earlier
+successfully saved polls remain saved; a later failure does not roll them back.
+Historical replay/engine `step()` APIs retain their historical-data behavior.
+
+## Official-source recovery tools
+
+`nsebot.research.fetch_official` provides a bounded, manual downloader for the
+reviewed calendar circulars or the approved 6 November 2026 closing reports.
+It uses the already-installed `curl_cffi` default transport, which succeeded where
+standard `requests` and Windows curl timed out. It uses no impersonation, custom
+proxy or login. It requires explicit user approval before `--allow-network`,
+refuses existing output folders, and rejects HTTP block/HTML pages and changed
+Muhurat PDF bytes. Calendar/date validation still applies after downloading.
+
+`nsebot.research.source_check` validates local official NSE cash bhavcopy and Nifty
+closing CSVs. It checks the trade date, NSE CM/EQ identity, duplicate/missing rows,
+OHLC bounds and finite prices. It uses `ClsPric`, not `LastPric`, for the official
+cash close. Outputs are a separate, **unadjusted one-session verification snapshot**;
+they are not silently spliced into Yahoo's adjusted historical prices or passed
+to an engine. No new dataset is sufficient for a strategy backtest merely because
+this one-day source check passes.
+
+Keep downloaded PDFs, ZIPs, CSVs and results on `E:\AI-Trading-Data` and preserve
+originals. These artifacts are ignored by Git. Source hashes/provenance are recorded
+in the SSD manifests. See [calendar verification](NSE_CALENDAR_REVIEW.md) and
+[repair status](REPAIR_STATUS.md) for current evidence and remaining source limits.
+
 ## GitHub Actions and publication
 
 All workflows are manual-only. The swing, intraday, and momentum jobs are

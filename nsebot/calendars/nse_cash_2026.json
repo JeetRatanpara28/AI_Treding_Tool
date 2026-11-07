@@ -1,0 +1,127 @@
+{
+  "schema_version": 1,
+  "exchange": "NSE",
+  "segment": "cash_equities",
+  "timezone": "Asia/Kolkata",
+  "coverage_start": "2026-01-01",
+  "coverage_end": "2026-12-31",
+  "reviewed_on": "2026-11-07",
+  "review_expires": "2026-11-10",
+  "review_policy": "Short review window around the verified Muhurat session. Refresh official amendments before extending. Ready-after is local safety policy, not a Yahoo finality guarantee.",
+  "sources": {
+    "annual": {
+      "url": "https://nsearchives.nseindia.com/content/circulars/CMTR71775.pdf",
+      "verified_via": "direct official download, SHA256 archived; source content reviewed",
+      "sha256": "aa97e0afc0ce394097f2fc62631c68e3c2e4c7c23541ed35f21d9fc06b0dcacb"
+    },
+    "january": {
+      "url": "https://nsearchives.nseindia.com/content/circulars/CMTR72260.pdf",
+      "verified_via": "direct official download, SHA256 archived; source content reviewed",
+      "sha256": "c5d32a838b46d5044717b830a4793479a51a40f8e4e19d3896c65682d15b6ebc"
+    },
+    "budget": {
+      "url": "https://nsearchives.nseindia.com/content/circulars/CMTR72349.pdf",
+      "verified_via": "direct official download, SHA256 archived; source content reviewed",
+      "sha256": "70458f7b8126f47584d4bc402a78dde357e42dbebaa5d53cfce0c70c82dabfc3"
+    },
+    "muhurat": {
+      "url": "https://nsearchives.nseindia.com/content/circulars/CMTR76941.pdf",
+      "verified_via": "direct official download, SHA256 archived; source content reviewed",
+      "sha256": "ce94ee1c54d98eccdf3c30fa0673ae2b6a49ea4ed4a72fb83d826f4359f71d58"
+    }
+  },
+  "normal_session": {
+    "open": "09:15",
+    "normal_close": "15:30",
+    "post_close_end": "16:00",
+    "ready_after": "16:15"
+  },
+  "holidays": [
+    {
+      "date": "2026-01-15",
+      "source": "january"
+    },
+    {
+      "date": "2026-01-26",
+      "source": "annual"
+    },
+    {
+      "date": "2026-03-03",
+      "source": "annual"
+    },
+    {
+      "date": "2026-03-26",
+      "source": "annual"
+    },
+    {
+      "date": "2026-03-31",
+      "source": "annual"
+    },
+    {
+      "date": "2026-04-03",
+      "source": "annual"
+    },
+    {
+      "date": "2026-04-14",
+      "source": "annual"
+    },
+    {
+      "date": "2026-05-01",
+      "source": "annual"
+    },
+    {
+      "date": "2026-05-28",
+      "source": "annual"
+    },
+    {
+      "date": "2026-06-26",
+      "source": "annual"
+    },
+    {
+      "date": "2026-09-14",
+      "source": "annual"
+    },
+    {
+      "date": "2026-10-02",
+      "source": "annual"
+    },
+    {
+      "date": "2026-10-20",
+      "source": "annual"
+    },
+    {
+      "date": "2026-11-10",
+      "source": "annual"
+    },
+    {
+      "date": "2026-11-24",
+      "source": "annual"
+    },
+    {
+      "date": "2026-12-25",
+      "source": "annual"
+    }
+  ],
+  "special_sessions": [
+    {
+      "date": "2026-02-01",
+      "kind": "trading",
+      "source": "budget",
+      "open": "09:15",
+      "normal_close": "15:30",
+      "post_close_end": "16:00",
+      "ready_after": "16:15"
+    },
+    {
+      "date": "2026-11-08",
+      "kind": "trading",
+      "source": "muhurat",
+      "open": "14:20",
+      "normal_close": "15:30",
+      "post_close_end": "16:00",
+      "ready_after": "16:15",
+      "cas_continuous_close": "15:15",
+      "cas_matching_end": "15:35"
+    }
+  ]
+}

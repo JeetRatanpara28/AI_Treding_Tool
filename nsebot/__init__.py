@@ -4,9 +4,9 @@ Two modes share one risk and execution core:
   swing     CNC delivery, daily bars, decided after the close
   intraday  MIS, 5-minute bars, squared off before 15:15 IST
 
-Market data is free (Yahoo Finance via yfinance). Execution is paper by
-default; the Zerodha Kite adapter switches on only when Kite Connect
-credentials are configured.
+Market data is free (Yahoo Finance via yfinance). This customized checkout
+permits paper execution only. Live broker transport and login are disabled;
+credentials cannot enable them.
 """
 
 __version__ = '3.0.0'

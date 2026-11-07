@@ -215,7 +215,7 @@ def test_cash_moved_in_tops_holdings_up_to_an_equal_share_at_the_next_rebalance(
     assert L.cash < 0.05 * eq
 
 
-def test_the_momentum_run_sweeps_a_retired_flat_sleeve(tmp_path, monkeypatch):
+def test_the_momentum_run_sweeps_a_retired_flat_sleeve(tmp_path, monkeypatch, daily_cli_clock):
     monkeypatch.setattr(nsebot.data, 'YahooProvider', FakeProvider)
     monkeypatch.setattr(nsebot.listing, 'nse_equities', lambda *a, **k: (LISTED, 'fake list'))
     monkeypatch.chdir(tmp_path)

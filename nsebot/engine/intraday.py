@@ -28,6 +28,7 @@ import pandas as pd
 
 from ..broker.base import OrderSpec
 from ..data import completed_bars
+from ..freshness import DataFreshnessError, require_intraday_bar
 from ..indicators import atr as atr_fn, median_turnover
 from ..market import IST, TickTable, at_time, round_stop
 from ..risk import BreakerVerdict, CircuitBreakers, allocate, estimate_edge, evaluate
@@ -246,22 +247,32 @@ class IntradayEngine:
             bars = provider.intraday(symbols, self.interval, lookback_days=5)
             index_bars = provider.intraday([INDEX_SYMBOL], self.interval, lookback_days=5).get(INDEX_SYMBOL)
             if self._has_session(index_bars, now):
+                require_intraday_bar(index_bars, now, 'index', self.interval, is_index=True)
+                required = {p.symbol for p in self.L.positions} | {
+                    p['spec']['symbol'] for p in self.L.state.get('pending', [])}
+                for symbol in required - set(bars):
+                    raise DataFreshnessError(f'{symbol}: held/pending intraday data missing')
+                for symbol, frame in bars.items():
+                    require_intraday_bar(frame, now, symbol, self.interval)
                 had_session = True
+                reports.append(self.step(bars, now, daily, index_bars))
             elif now.time() >= self.cfg.intraday.entry_start:
+                if had_session or self.L.positions:
+                    raise DataFreshnessError('index intraday feed disappeared; no synthetic square-off price used')
                 self.log(f'  No NSE session data for {now.date()} — holiday or feed outage; stopping.')
                 break
-            reports.append(self.step(bars, now, daily, index_bars))
             nxt = now.floor(f'{self.interval}min') + pd.Timedelta(minutes=self.interval, seconds=latency_s)
             sleep(max((min(nxt, end) - clock()).total_seconds(), 1.0))
         if not had_session and not self.L.positions:
-            self.L.save()
             return reports                       # holiday: no trades, no equity row
         last = {}
-        try:
+        if self.L.positions:
             bars = provider.intraday([p.symbol for p in self.L.positions], self.interval, lookback_days=1)
-            last = {s: float(b['close'].iloc[-1]) for s, b in bars.items() if len(b)}
-        except Exception as e:
-            self.log(f'  could not fetch final prices ({e}) — closing at entry price')
+            for position in self.L.positions:
+                frame = bars.get(position.symbol)
+                require_intraday_bar(frame, clock(), position.symbol, self.interval)
+                done = completed_bars(frame, clock(), self.interval)
+                last[position.symbol] = float(done['close'].iloc[-1])
         reports.append(self.finish(clock(), last, 'square-off before the job time limit' if cut
                                    else 'end-of-session square-off'))
         return reports

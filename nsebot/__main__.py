@@ -6,11 +6,11 @@
     python -m nsebot backtest   [--out research_results]                full-engine portfolio backtest
     python -m nsebot status     [--state state]                         sleeves at a glance
 
-Paper is the default broker. Kite needs KITE_API_KEY plus a daily token from
-`python -m nsebot.kite_login`, and live order placement needs a static IP
-(SEBI retail-algo rules) — see nsebot/broker/kite.py.
+Only paper execution is permitted in this checkout; broker login is disabled.
+Daily paper cycles require a reviewed offline session calendar and complete
+bars for its latest finished session. Invalid/expired calendars stop execution.
 
-Exit codes: 0 ok · 2 Kite token missing/expired · 3 market data unusable.
+Exit codes: 0 ok · 2 invalid broker request · 3 market data unusable/stale.
 
 Drawdown latches are written to state/<mode>/BREAKER_TRIPPED_<mode>, which the
 workflows commit, so a latch survives GitHub Actions' fresh checkouts. Delete
@@ -48,6 +48,34 @@ def _capital(mode):
     return float(os.environ.get(f'{mode.upper()}_CAPITAL', 50_000))
 
 
+def _calendar_preflight():
+    from .freshness import DataFreshnessError, expected_daily_session
+
+    try:
+        return expected_daily_session()
+    except DataFreshnessError as exc:
+        logger.error(f'DATA FRESHNESS: {exc}; no download or paper cycle, state left untouched')
+        return None
+
+
+def _fresh_daily_session(index, universe=None, required=(), session=None):
+    from .freshness import DataFreshnessError, expected_daily_session, require_daily_session
+
+    try:
+        session = expected_daily_session() if session is None else session
+        require_daily_session(index, session, 'index', is_index=True)
+        if universe is not None:
+            for symbol in required:
+                if symbol not in universe:
+                    raise DataFreshnessError(f'{symbol}: held/pending symbol has no daily data')
+            for symbol, frame in universe.items():
+                require_daily_session(frame, session, symbol)
+    except DataFreshnessError as exc:
+        logger.error(f'DATA FRESHNESS: {exc}; paper cycle stopped, state left untouched')
+        return None
+    return session
+
+
 def _retired(mode, root='state'):
     """The reason this sleeve takes no new entries, or None while it is active."""
     plan = sleeves.load(os.path.join(root, 'sleeves.json'))
@@ -70,10 +98,13 @@ def _sweeps(root):
 
 def cmd_swing(args):
     from .data import YahooProvider
-    from .engine.market_view import DailyMarket, completed_session
+    from .engine.market_view import DailyMarket
     from .engine.swing import SwingEngine
     from .universe import INDEX_SYMBOL, SWING_UNIVERSE
 
+    asof = _calendar_preflight()
+    if asof is None:
+        return 3
     cfg = BotConfig()
     ledger = Ledger(args.state, 'swing', _capital('swing'))
     broker = _broker(args.broker)
@@ -89,14 +120,10 @@ def cmd_swing(args):
         logger.error(msg)
         send_email('nsebot swing — DATA FAILURE', msg)
         return 3
-    missing_held = sorted(set(held) - set(universe))
-    if missing_held:
-        logger.warning(f'no data for held/pending {missing_held} — their bars are processed next run')
-    market = DailyMarket(universe, index)
-    asof = completed_session(index)
+    asof = _fresh_daily_session(index, universe, required=held, session=asof)
     if asof is None:
-        logger.error('no completed session in the index data')
         return 3
+    market = DailyMarket(universe, index)
     rep = SwingEngine(cfg, broker, ledger, workdir='.', log=logger.info,
                       latch_dir=ledger.dir, retired=_retired('swing', args.state)).run(market, asof)
     md = swing_report(rep, ledger.contributed)
@@ -108,16 +135,41 @@ def cmd_swing(args):
 
 
 def cmd_intraday(args):
+    from . import market
     from .data import YahooProvider
     from .engine.intraday import IntradayEngine
+    from .freshness import DataFreshnessError
+    from .session_calendar import CalendarError, load_calendar
+
+    now = market.now_ist()
+    try:
+        calendar = load_calendar()
+        calendar.expected_session(now.to_pydatetime())
+        if calendar.session(now.date()) is None:
+            logger.info('NSE calendar: no cash-equity session today; no download or paper cycle')
+            return 0
+        if now.date() in calendar.special:
+            logger.error('SESSION CALENDAR: intraday special-session timings are not supported; cycle stopped')
+            return 3
+    except CalendarError as exc:
+        logger.error(f'SESSION CALENDAR: {exc}; no download or paper cycle, state left untouched')
+        return 3
 
     cfg = BotConfig()
     ledger = Ledger(args.state, 'intraday', _capital('intraday'))
     engine = IntradayEngine(cfg, _broker(args.broker), ledger, workdir='.', log=logger.info,
                             latch_dir=ledger.dir, retired=_retired('intraday', args.state))
-    reports = engine.run_session(YahooProvider(chunk_size=40, pause_s=0.5),
-                                 deadline=pd.Timestamp.now(tz='Asia/Kolkata') + JOB_BUDGET)
+    try:
+        reports = engine.run_session(YahooProvider(chunk_size=40, pause_s=0.5),
+                                     clock=market.now_ist, deadline=now + JOB_BUDGET)
+    except DataFreshnessError as exc:
+        logger.error(f'DATA FRESHNESS: {exc}; intraday poll stopped without inventing fills')
+        return 3
     if not reports:
+        current = market.now_ist()
+        if cfg.intraday.entry_start <= current.time() < cfg.intraday_exits.square_off:
+            logger.error('DATA FRESHNESS: no intraday session data during the trading window; cycle stopped')
+            return 3
         # Started after the 15:10 square-off — a late or duplicate scheduled run
         # (docs/SCHEDULING.md). Nothing ran, so no report and no email.
         logger.info('intraday session already over when this run started — nothing to do')
@@ -133,23 +185,21 @@ def cmd_momentum(args):
     import pandas as pd
 
     from .data import YahooProvider
-    from .engine.market_view import completed_session
     from .engine.momentum import MomentumEngine, MomentumMarket
     from .listing import ListUnavailable, nse_equities
     from .universe import INDEX_SYMBOL
 
+    asof = _calendar_preflight()
+    if asof is None:
+        return 3
     cfg = BotConfig()
     m = cfg.momentum
     ledger = Ledger(args.state, 'momentum', _capital('momentum'))
-    engine = MomentumEngine(cfg, PaperBroker(), ledger, workdir='.', log=logger.info, latch_dir=ledger.dir)
     prov = YahooProvider()
     index = prov.daily([INDEX_SYMBOL], lookback_days=420).get(INDEX_SYMBOL)
-    asof = completed_session(index) if index is not None else None
-    if asof is None:
-        msg = 'market data unusable: no completed index session — state left untouched'
-        logger.error(msg)
-        send_email('nsebot momentum — DATA FAILURE', msg)
+    if _fresh_daily_session(index, session=asof) is None:
         return 3
+    engine = MomentumEngine(cfg, PaperBroker(), ledger, workdir='.', log=logger.info, latch_dir=ledger.dir)
     last = ledger.state.get('last_processed')
     processed = bool(last) and pd.Timestamp(last) >= asof
     due = not processed and engine.rebalance_due(MomentumMarket({}, index, m), asof)
@@ -172,9 +222,8 @@ def cmd_momentum(args):
             return 3
     else:
         universe = prov.daily(needed, lookback_days=30) if needed and not processed else {}
-    missing = sorted(set(needed) - set(universe))
-    if missing and not processed:
-        logger.warning(f'no data for held/pending {missing} — they are valued at cost and filled next run')
+    if _fresh_daily_session(index, universe, required=needed if not processed else (), session=asof) is None:
+        return 3
     # Retired, flat sleeves hand their cash over in the same run that marks
     # this session, and their ledgers are written only once this one is safe.
     sweeps = [] if processed else _sweeps(args.state)

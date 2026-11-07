@@ -62,5 +62,6 @@ docs/progress/
 *.hdf5
 *.zip
 *.7z
+*.pdf
 BREAKER_TRIPPED_*
 .fundamentals_cache.json

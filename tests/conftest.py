@@ -8,6 +8,15 @@ import pytest
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
+@pytest.fixture
+def daily_cli_clock(monkeypatch):
+    """Freeze the CLI clock to the existing fake provider's final daily session."""
+    final = pd.bdate_range('2025-07-01', periods=320)[-1]
+    now = final.tz_localize('Asia/Kolkata') + pd.Timedelta(hours=18)
+    monkeypatch.setattr('nsebot.market.now_ist', lambda: now)
+    return now
+
+
 def daily_frame(closes, volume=200_000.0, start='2025-01-01', spread=0.01):
     closes = np.asarray(closes, dtype=float)
     vol = np.broadcast_to(np.asarray(volume, dtype=float), closes.shape).copy()
