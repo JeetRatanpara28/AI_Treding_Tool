@@ -27,7 +27,7 @@ import pandas as pd
 from ..broker.base import OrderSpec
 from ..market import TickTable, round_stop
 from ..risk import BreakerVerdict, CircuitBreakers, allocate, estimate_edge, evaluate
-from ..risk.exits import advance
+from ..risk.exits import ExitDecision, advance
 from ..universe import sector_of
 from .book import Book
 
@@ -40,8 +40,10 @@ STARVED_ALERT_SESSIONS = 3          # signals + free slots + nothing opened, thi
 class SwingEngine:
     mode = 'swing'
 
-    def __init__(self, cfg, broker, ledger, workdir='.', log=None, latch_dir=None, retired=None):
+    def __init__(self, cfg, broker, ledger, workdir='.', log=None, latch_dir=None, retired=None,
+                 defer_close_exits=False):
         self.cfg = cfg
+        self.defer_close_exits = defer_close_exits
         self.retired = retired                      # a reason: no new entries, exits still run
         self.sizing, self.exits = cfg.swing_sizing, cfg.swing_exits
         self.broker, self.L = broker, ledger
@@ -74,10 +76,15 @@ class SwingEngine:
             bars = market.bars_after(spec['symbol'], spec['signal_time'], asof)
             bar = None
             if len(bars):
-                bar = bars.iloc[0].copy()
+                bar = bars.iloc[0].to_dict()
                 bar['datetime'] = bars.index[0]
             res = self.broker.resolve_entry(p, bar)
             if res.status == 'FILLED':
+                required = res.fill.qty * res.fill.price / self.sizing.leverage + res.fill.costs
+                if required > L.cash + 1e-9:
+                    report['cancelled'].append((spec['symbol'],
+                                                'opening fill plus costs exceeds available paper cash'))
+                    continue
                 pos = self.book.open(res.fill, spec, res.fill.time, spec.get('meta', {}).get('atr', 0.0))
                 report['filled'].append((pos.symbol, pos.qty, pos.entry_price))
                 self.log(f'  ▲ {pos.symbol} filled {pos.qty} @ ₹{pos.entry_price:.2f} '
@@ -99,8 +106,25 @@ class SwingEngine:
             for when, row in bars.iterrows():
                 bar = {'open': row['open'], 'high': row['high'], 'low': row['low'],
                        'close': row['close'], 'datetime': when}
-                d = evaluate(pos, bar, self.exits, atr=row.get('atr'), exit_level=row.get('ema_exit'))
+                queued = pos.meta.get('close_exit')
+                if queued and when > pd.Timestamp(queued['signal_time']):
+                    # The decision existed before this open; do not inspect this
+                    # bar's close/high/low to decide whether to execute it.
+                    gap_stop = (pos.side == 'LONG' and row['open'] <= pos.stop
+                                or pos.side == 'SHORT' and row['open'] >= pos.stop)
+                    reason = 'stop (gap)' if gap_stop else f"next-open exit: {queued['reason']}"
+                    d = ExitDecision('EXIT', float(row['open']), reason)
+                else:
+                    d = evaluate(pos, bar, self.exits, atr=row.get('atr'), exit_level=row.get('ema_exit'))
                 if d.action == 'EXIT':
+                    if self.defer_close_exits and d.reason.startswith(
+                            ('reversion target:', 'max hold ', 'stagnant:')):
+                        # A completed-close observation cannot be filled at that
+                        # same close. Persist the decision for the next bar.
+                        pos.meta['close_exit'] = {'signal_time': str(when), 'reason': d.reason}
+                        advance(pos, bar, d)
+                        pos.meta['last_bar'] = str(when)
+                        continue
                     fill = self.broker.exit(pos, d.price, d.reason, when)
                     t = self.book.close(pos, fill, when)
                     report['closed'].append((pos.symbol, t['exit_reason'], t['net_pnl'], t['net_r']))

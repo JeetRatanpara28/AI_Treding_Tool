@@ -1,0 +1,4 @@
+interface:
+  display_name: "NSE Paper Research"
+  short_description: "NSE setups, news and risk with paper-only checks"
+  default_prompt: "Use $nse-paper-research to review an NSE paper-trading idea, verify its evidence, and define testable entry, exit and risk rules."

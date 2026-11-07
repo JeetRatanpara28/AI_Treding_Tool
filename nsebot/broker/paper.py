@@ -19,8 +19,12 @@ class PaperBroker(Broker):
     name = 'paper'
     is_live = False
 
-    def __init__(self, slippage_bps=5.0, charges=DEFAULT_CHARGES, ticks=None):
+    def __init__(self, slippage_bps=5.0, charges=DEFAULT_CHARGES, ticks=None,
+                 stop_slippage_bps=0.0):
         self.slip = float(slippage_bps) / 1e4
+        self.stop_slip = float(stop_slippage_bps) / 1e4
+        if not (0 <= self.slip < 1 and 0 <= self.stop_slip < 1):
+            raise ValueError('slippage must be finite and in [0, 10000) bps')
         self.charges = charges
         self.ticks = ticks or TickTable()
         self._seq = 0
@@ -50,9 +54,10 @@ class PaperBroker(Broker):
     def exit(self, position, price, reason, when):
         long_ = position.side == 'LONG'
         tick = self.ticks.tick(position.symbol, price)
-        # Stop and gap fills are already pessimistic; market exits pay slippage.
-        if 'stop' not in reason:
-            price = price * (1 - self.slip) if long_ else price * (1 + self.slip)
+        # Legacy default: no extra stop haircut. Historical replay explicitly
+        # supplies a stop haircut as well as ordinary exit slippage.
+        slip = self.stop_slip if 'stop' in reason else self.slip
+        price = price * (1 - slip) if long_ else price * (1 + slip)
         px = round_to_tick(price, tick, 'down' if long_ else 'up')
         value = px * position.qty
         product = 'MIS' if position.mode == 'intraday' else 'CNC'

@@ -1,0 +1,43 @@
+{
+  "review_date": "2026-11-07",
+  "status": "METADATA_ONLY_NOT_DOWNLOADED",
+  "repository": "https://github.com/aswinv90/indian-market-historical-data",
+  "reviewed_ref": "700081a35486878208da393584c32ea83d6bbabc",
+  "provider_licence": "Non-Commercial Research and Personal Use License; preserve notices; upstream rights not independently established",
+  "actual_provider": "Yahoo Finance via yfinance, verified in scripts/utils.py",
+  "files": [
+    {
+      "path": "data/INDICES/NIFTY_50.parquet",
+      "bytes": 232514,
+      "git_blob_sha": "2b4daf7c102d3b55b4667fd30d07f71d7322453e"
+    },
+    {
+      "path": "data/NSE/HDFCBANK_NS.parquet",
+      "bytes": 370088,
+      "git_blob_sha": "652ce2fa8adb454e707f9433c302846e2ae76f1b"
+    },
+    {
+      "path": "data/NSE/HINDUNILVR_NS.parquet",
+      "bytes": 356666,
+      "git_blob_sha": "188e664ad048e09fcf9897b8d20ac69666ea681a"
+    },
+    {
+      "path": "data/NSE/LT_NS.parquet",
+      "bytes": 303987,
+      "git_blob_sha": "3d5dd8bb57689b3a48326080d022862f5c3662cf"
+    },
+    {
+      "path": "data/NSE/RELIANCE_NS.parquet",
+      "bytes": 388265,
+      "git_blob_sha": "0385c4b2177fcaadfc05e4b2575f21dddd8f2584"
+    },
+    {
+      "path": "data/NSE/TCS_NS.parquet",
+      "bytes": 286176,
+      "git_blob_sha": "dcdd0d15d3a4557b62f75a28607d754c80cfca97"
+    }
+  ],
+  "total_bytes": 1937696,
+  "parquet_reader_available": "pyarrow already installed; no installation performed",
+  "next_step": "Separately approve bounded file acquisition and validate actual contents; no backtest-ready claim."
+}

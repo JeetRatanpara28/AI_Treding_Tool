@@ -63,3 +63,10 @@
 7. Paper results ke liye local dashboard banao.
 
 Yeh goals roadmap hain, abhi se downloads, trading, dashboard implementation ya external actions shuru karne ki authorization nahi.
+
+## Trading research skill
+
+- Trading concepts, candles/indicators, entry/exit hypotheses, news, risk ya backtest design par kaam karte waqt `skills/nse-paper-research/SKILL.md` use karo; installed naam `$nse-paper-research` hai.
+- Is skill mein foundation-to-advanced learning map, primary-source references aur offline arithmetic/timestamp checks hain. Yeh model retraining, certification, guaranteed profit ya complete regulatory knowledge ka claim nahi hai.
+- User ki priority: pehle incomplete/failed checks resolve karo, phir naya research phase shuru karo. Failed source ko usable declare mat karo.
+- Skill read/install karna strategy parameters badalne, automatic news polling, naye datasets download karne, real orders ya GitHub push ki permission nahi deta.

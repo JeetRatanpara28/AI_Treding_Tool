@@ -5,6 +5,8 @@
 >
 > **Live broker access is disabled. All trading schedules and state-pushing workflows are disabled.**
 > Follow [Windows setup](docs/WINDOWS_SETUP.md) and [the audit report](docs/WINDOWS_RESEARCH.md).
+> Latest: [five-stock research results and limits](docs/FIVE_STOCK_RESEARCH_RESULT.md),
+> [Monday paper-observation plan](docs/MONDAY_PAPER_PLAN.md), and [current development status](docs/DEVELOPMENT_STATUS.md).
 > Historical upstream documentation below describes capabilities that may be disabled in this fork.
 
 <!-- progress:start -->
@@ -12,6 +14,13 @@
 
 Portfolio state, journals, and market datasets are private local files and are not published.
 <!-- progress:end -->
+
+## Original upstream documentation (historical)
+
+The text below preserves the original project's context and reported experiments.
+It does not describe an active strategy, current private portfolio, enabled schedule,
+or locally reproduced performance in this Windows customization. Current research
+uses isolated paper ledgers; live brokerage access remains disabled.
 
 A lean NSE trading engine with three modes that share one risk core. **Since 3 Nov 2026 the whole book runs one of them, momentum**; the other two are retired ([`state/sleeves.json`](state/sleeves.json)) and hand their cash to it once flat.
 
@@ -21,7 +30,7 @@ A lean NSE trading engine with three modes that share one risk core. **Since 3 N
 | **swing** | retired 3 Nov 2026 | CNC (delivery) | Yahoo daily bars (free) | only while it still holds something | Dip reversion inside long-term uptrends |
 | **intraday** | retired 3 Nov 2026 | MIS (5x margin) | Yahoo 5-minute bars (free) | never (flat) | Opening-range breakout with VWAP and volume confirmation, long and short |
 
-Execution is **paper by default**. A Zerodha Kite Connect adapter switches on when API credentials are configured (see [Kite](#zerodha-kite)).
+Execution in this fork is **paper only**. Historical upstream supported an optional Zerodha Kite adapter; this fork rejects live broker/login access even if credentials are configured. Preserve the fail-closed guards.
 
 This is V3, a rebuild after V2 stopped trading on 14 Sep 2026. The full story is in:
 - [`docs/AUTOPSY_V2.md`](docs/AUTOPSY_V2.md): why V2 froze;
